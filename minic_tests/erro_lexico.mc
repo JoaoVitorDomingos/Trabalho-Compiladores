@@ -1,0 +1,4 @@
+program ErroLexico {
+    int x;
+    x = 10 @ 2;
+}
