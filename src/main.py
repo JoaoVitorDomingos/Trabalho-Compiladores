@@ -5,6 +5,7 @@ from pathlib import Path
 from lexer import Lexer, LexicalError
 from parser import Parser, SyntaxError
 from ast_nodes import ast_to_dict
+from semantic import SemanticAnalyzer
 
 
 def print_tokens(tokens):
@@ -26,7 +27,7 @@ def main():
         return 2
 
     try:
-        source = source_path.read_text(encoding="utf-8")
+        source = source_path.read_text(encoding="utf-8-sig")
         tokens = Lexer().tokenize(source)
         print_tokens(tokens)
         tree = Parser(tokens).parse()
@@ -34,9 +35,15 @@ def main():
         print(str(exc))
         return 1
 
+    semantic_errors = SemanticAnalyzer().analyze(tree)
+    if semantic_errors:
+        for error in semantic_errors:
+            print(error)
+        return 1
+
     print("=== AST ===")
     print(json.dumps(ast_to_dict(tree), ensure_ascii=False, indent=2))
-    print("\nAnálise concluída com sucesso.")
+    print("\nAnálise léxica, sintática e semântica concluída com sucesso.")
     return 0
 
 
