@@ -1,15 +1,16 @@
-# Compilador MiniC — Parte 1
+# Compilador MiniC — Parte 2
 
-Implementação em Python da primeira etapa do trabalho prático de Construção de um Compilador.
+Implementação em Python do compilador MiniC, com análise léxica, sintática e semântica.
 
 ## Escopo
 
 - análise léxica;
 - análise sintática por descida recursiva;
 - construção da Árvore Sintática Abstrata (AST);
+- tabela de símbolos e verificação de declarações e tipos;
 - diagnóstico de erros léxicos e sintáticos com linha e coluna;
 - execução pela linha de comando;
-- arquivos de teste válidos e inválidos.
+- arquivos de teste válidos e inválidos para as três análises.
 
 A implementação segue a gramática MiniC fornecida no enunciado, sem incluir comentários, strings, vetores, funções, procedimentos ou laços.
 
@@ -22,17 +23,23 @@ minic_compilador/
 │   ├── ast_nodes.py
 │   ├── lexer.py
 │   ├── parser.py
+│   ├── semantic.py
 │   └── main.py
 ├── minic_tests/
 │   ├── valido_soma.mc
 │   ├── valido_condicional.mc
 │   ├── valido_logico.mc
 │   ├── valido_bloco.mc
+│   ├── valido_semantico.mc
 │   ├── erro_lexico.mc
 │   ├── erro_sintatico.mc
-│   └── erro_sintatico_bloco.mc
+│   ├── erro_sintatico_bloco.mc
+│   ├── erro_semantico_nao_declarada.mc
+│   └── erro_semantico_tipos.mc
 ├── docs/
-│   └── relatorio.md
+│   ├── relatorio.md
+│   └── relatorio-parte2.md
+├── run_tests.py
 └── README.md
 ```
 
@@ -49,7 +56,13 @@ Na pasta raiz do projeto:
 python src/main.py minic_tests/valido_soma.mc
 ```
 
-O programa mostra os tokens reconhecidos e, quando a análise é válida, a AST em JSON.
+O programa mostra os tokens reconhecidos e, quando todas as análises são válidas, a AST em JSON. Erros semânticos informam o problema e a linha correspondente.
+
+Para executar todos os casos (válidos, léxicos, sintáticos e semânticos):
+
+```bash
+python run_tests.py
+```
 
 Para testar um erro léxico:
 
@@ -65,4 +78,4 @@ python src/main.py minic_tests/erro_sintatico.mc
 
 ## Observação sobre a gramática
 
-A precedência implementada segue diretamente os níveis da gramática: `||`, `&&`, operadores relacionais, `+/-`, `*//` e fatores/unários. Parênteses alteram a associação da expressão. O operador relacional é opcional e ocorre no máximo uma vez em cada expressão relacional, conforme a produção fornecida.
+A precedência implementada segue diretamente os níveis da gramática: `||`, `&&`, operadores relacionais, `+/-`, `*//` e fatores/unários. Parênteses alteram a associação da expressão. O operador relacional é opcional e ocorre no máximo uma vez em cada expressão relacional, conforme a produção fornecida. A tabela de símbolos tem escopo único, pois a linguagem não especifica escopo local para blocos.

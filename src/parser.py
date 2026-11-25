@@ -68,12 +68,16 @@ class Parser:
         return Program(name, declarations, commands)
 
     def parse_declaration(self):
-        type_name = self.advance().lexeme
-        identifiers = [self.expect("IDENTIFIER", "identificador").lexeme]
+        type_token = self.advance()
+        type_name = type_token.lexeme
+        identifiers = [self.expect("IDENTIFIER", "identificador")]
         while self.match("COMMA"):
-            identifiers.append(self.expect("IDENTIFIER", "identificador após ','").lexeme)
+            identifiers.append(self.expect("IDENTIFIER", "identificador após ','"))
         self.expect("SEMICOLON", "';'")
-        return Declaration(type_name, identifiers)
+        node = Declaration(type_name, [token.lexeme for token in identifiers])
+        node.line = type_token.line
+        node.identifier_lines = {token.lexeme: token.line for token in identifiers}
+        return node
 
     def parse_command(self):
         if self.check("IDENTIFIER"):
@@ -89,34 +93,43 @@ class Parser:
         raise SyntaxError("comando esperado", self.token)
 
     def parse_assignment(self):
-        identifier = self.expect("IDENTIFIER").lexeme
+        identifier_token = self.expect("IDENTIFIER")
+        identifier = identifier_token.lexeme
         self.expect("ASSIGN", "'='")
         expression = self.parse_expression()
         self.expect("SEMICOLON", "';'")
-        return Assignment(identifier, expression)
+        node = Assignment(identifier, expression)
+        node.line = identifier_token.line
+        node.identifier_line = identifier_token.line
+        return node
 
     def parse_read(self):
-        self.expect("READ")
+        read_token = self.expect("READ")
         self.expect("LPAREN", "'('")
-        identifiers = [self.expect("IDENTIFIER", "identificador").lexeme]
+        identifier_tokens = [self.expect("IDENTIFIER", "identificador")]
         while self.match("COMMA"):
-            identifiers.append(self.expect("IDENTIFIER", "identificador após ','").lexeme)
+            identifier_tokens.append(self.expect("IDENTIFIER", "identificador após ','"))
         self.expect("RPAREN", "')'")
         self.expect("SEMICOLON", "';'")
-        return Read(identifiers)
+        node = Read([token.lexeme for token in identifier_tokens])
+        node.line = read_token.line
+        node.identifier_lines = [token.line for token in identifier_tokens]
+        return node
 
     def parse_write(self):
-        self.expect("WRITE")
+        write_token = self.expect("WRITE")
         self.expect("LPAREN", "'('")
         expressions = [self.parse_expression()]
         while self.match("COMMA"):
             expressions.append(self.parse_expression())
         self.expect("RPAREN", "')'")
         self.expect("SEMICOLON", "';'")
-        return Write(expressions)
+        node = Write(expressions)
+        node.line = write_token.line
+        return node
 
     def parse_if(self):
-        self.expect("IF")
+        if_token = self.expect("IF")
         self.expect("LPAREN", "'('")
         condition = self.parse_expression()
         self.expect("RPAREN", "')'")
@@ -124,7 +137,9 @@ class Parser:
         else_block = None
         if self.match("ELSE"):
             else_block = self.parse_block()
-        return If(condition, then_block, else_block)
+        node = If(condition, then_block, else_block)
+        node.line = if_token.line
+        return node
 
     def parse_block(self):
         self.expect("LBRACE", "'{'")
@@ -141,50 +156,75 @@ class Parser:
 
     def parse_logical_or(self):
         node = self.parse_logical_and()
-        while self.match("OR"):
+        while self.check("OR"):
+            token = self.advance()
             node = BinaryOp("||", node, self.parse_logical_and())
+            node.line = token.line
         return node
 
     def parse_logical_and(self):
         node = self.parse_relational()
-        while self.match("AND"):
+        while self.check("AND"):
+            token = self.advance()
             node = BinaryOp("&&", node, self.parse_relational())
+            node.line = token.line
         return node
 
     def parse_relational(self):
         node = self.parse_arithmetic()
         if self.check_any("LT", "LE", "GT", "GE", "EQ", "NE"):
-            operator = self.advance().lexeme
-            node = BinaryOp(operator, node, self.parse_arithmetic())
+            token = self.advance()
+            node = BinaryOp(token.lexeme, node, self.parse_arithmetic())
+            node.line = token.line
         return node
 
     def parse_arithmetic(self):
         node = self.parse_term()
         while self.check_any("PLUS", "MINUS"):
-            operator = self.advance().lexeme
-            node = BinaryOp(operator, node, self.parse_term())
+            token = self.advance()
+            node = BinaryOp(token.lexeme, node, self.parse_term())
+            node.line = token.line
         return node
 
     def parse_term(self):
         node = self.parse_factor()
         while self.check_any("STAR", "SLASH"):
-            operator = self.advance().lexeme
-            node = BinaryOp(operator, node, self.parse_factor())
+            token = self.advance()
+            node = BinaryOp(token.lexeme, node, self.parse_factor())
+            node.line = token.line
         return node
 
     def parse_factor(self):
-        if self.match("NOT"):
-            return UnaryOp("!", self.parse_factor())
-        if self.match("MINUS"):
-            return UnaryOp("-", self.parse_factor())
+        if self.check("NOT"):
+            token = self.advance()
+            node = UnaryOp("!", self.parse_factor())
+            node.line = token.line
+            return node
+        if self.check("MINUS"):
+            token = self.advance()
+            node = UnaryOp("-", self.parse_factor())
+            node.line = token.line
+            return node
         if self.check("IDENTIFIER"):
-            return Identifier(self.advance().lexeme)
+            token = self.advance()
+            node = Identifier(token.lexeme)
+            node.line = token.line
+            return node
         if self.check("NUMBER"):
-            return Number(int(self.advance().lexeme))
-        if self.match("TRUE"):
-            return Boolean(True)
-        if self.match("FALSE"):
-            return Boolean(False)
+            token = self.advance()
+            node = Number(int(token.lexeme))
+            node.line = token.line
+            return node
+        if self.check("TRUE"):
+            token = self.advance()
+            node = Boolean(True)
+            node.line = token.line
+            return node
+        if self.check("FALSE"):
+            token = self.advance()
+            node = Boolean(False)
+            node.line = token.line
+            return node
         if self.match("LPAREN"):
             expression = self.parse_expression()
             self.expect("RPAREN", "')'")
